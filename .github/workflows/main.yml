@@ -1,1 +1,19 @@
+name: Print Parameter Demo
+
+on:
+  # Allows manual triggering of the workflow and defines input parameters
+  workflow_dispatch:
+    inputs:
+      custom_message:
+        description: 'A message to print'
+        required: true
+        default: 'Hello, World!'
+
+jobs:
+  print-message-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print the custom message parameter
+        run: |
+          echo "The provided parameter is: ${{ github.event.inputs.custom_message }}"
 
