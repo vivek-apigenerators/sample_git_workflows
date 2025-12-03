@@ -1,0 +1,31 @@
+resources:
+  resourceGroup:
+    type: azure-native:resources:ResourceGroup
+    properties:
+      resourceGroupName: ${serviceName}-rg
+      location: ${azure:location}
+
+  containerEnv:
+    type: azure-native:app:ManagedEnvironment
+    properties:
+      resourceGroupName: ${resourceGroup.name}
+      name: ${serviceName}-env
+      location: ${azure:location}
+
+  containerApp:
+    type: azure-native:app:ContainerApp
+    properties:
+      resourceGroupName: ${resourceGroup.name}
+      managedEnvironmentId: ${containerEnv.id}
+      location: ${azure:location}
+      configuration:
+        ingress:
+          external: true
+          targetPort: 5000
+      template:
+        containers:
+          - name: ${serviceName}
+            image: ${imageName}
+
+outputs:
+  url: ${containerApp.configuration.ingress.fqdn}
