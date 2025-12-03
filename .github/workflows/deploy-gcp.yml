@@ -1,0 +1,49 @@
+name: Deploy to GCP
+
+on:
+  workflow_dispatch:
+    inputs:
+      serviceName:
+        description: Cloud Run service name
+        default: flask-api
+        required: true
+      imageTag:
+        description: Container image tag
+        default: latest
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare vars
+        run: |
+          echo "SERVICE_NAME=${{ github.event.inputs.serviceName }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ github.event.inputs.imageTag }}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=gcr.io/${{ secrets.GCP_PROJECT }}/${{ github.event.inputs.serviceName }}:${{ github.event.inputs.imageTag }}" >> $GITHUB_ENV
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      - name: Build + Push container
+        run: |
+          docker build -t $IMAGE_NAME ./api
+          docker push $IMAGE_NAME
+
+      - name: Install Pulumi
+        run: curl -fsSL https://get.pulumi.com | sh
+      - run: echo "$HOME/.pulumi/bin" >> $GITHUB_PATH
+
+      - working-directory: infra
+        run: |
+          pulumi login --cloud-url "gs://your-pulumi-state"
+          pulumi stack init dev || true
+          pulumi config set serviceName $SERVICE_NAME
+          pulumi config set imageName $IMAGE_NAME
+          pulumi up --yes
