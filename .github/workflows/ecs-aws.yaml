@@ -1,0 +1,79 @@
+resources:
+  cluster:
+    type: aws:ecs:Cluster
+
+  repository:
+    type: aws:ecr:Repository
+    properties:
+      name: ${serviceName}
+
+  taskRole:
+    type: aws:iam:Role
+    properties:
+      assumeRolePolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+
+  executionRole:
+    type: aws:iam:Role
+    properties:
+      assumeRolePolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+
+  executionRolePolicyAttachment:
+    type: aws:iam:RolePolicyAttachment
+    properties:
+      role: ${executionRole.name}
+      policyArn: arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  taskDefinition:
+    type: aws:ecs:TaskDefinition
+    properties:
+      family: ${serviceName}
+      networkMode: awsvpc
+      requiresCompatibilities:
+        - FARGATE
+      cpu: "256"
+      memory: "512"
+      executionRoleArn: ${executionRole.arn}
+      containerDefinitions:
+        - name: ${serviceName}
+          image: ${imageName}
+          essential: true
+          portMappings:
+            - containerPort: 5000
+
+  vpc:
+    type: aws:ec2:Vpc
+    properties:
+      cidrBlock: "10.0.0.0/16"
+
+  subnet:
+    type: aws:ec2:Subnet
+    properties:
+      vpcId: ${vpc.id}
+      cidrBlock: "10.0.1.0/24"
+
+  service:
+    type: aws:ecs:Service
+    properties:
+      cluster: ${cluster.id}
+      taskDefinition: ${taskDefinition.arn}
+      desiredCount: 1
+      launchType: FARGATE
+      networkConfiguration:
+        subnets:
+          - ${subnet.id}
+        assignPublicIp: ENABLED
+
+outputs:
+  ecrRepo: ${repository.repositoryUrl}
