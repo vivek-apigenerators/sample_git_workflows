@@ -1,0 +1,21 @@
+resources:
+  cloudrunService:
+    type: gcp:cloudrun/service:Service
+    properties:
+      name: ${serviceName}
+      location: ${gcp:region}
+      template:
+        spec:
+          containers:
+            - image: ${imageName}
+
+  allowPublicInvoker:
+    type: gcp:cloudrun/IamMember:IamMember
+    properties:
+      service: ${cloudrunService.name}
+      location: ${gcp:region}
+      role: roles/run.invoker
+      member: allUsers
+
+outputs:
+  url: ${cloudrunService.status.url}
